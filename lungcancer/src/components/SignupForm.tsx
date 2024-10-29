@@ -1,3 +1,5 @@
+// src/ components/ SignupForm.tsx
+
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/router';
@@ -11,7 +13,7 @@ const SignupForm = () => {
     e.preventDefault();
     try {
       await axios.post('/api/auth', { email, password });
-      router.push('/login'); // Redirect to login page on success
+      router.push('/login');
     } catch (error) {
       console.error(error);
       alert('Signup failed!');

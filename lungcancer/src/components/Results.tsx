@@ -1,3 +1,5 @@
+// src/ components/ Results.tsx
+
 import { useRouter } from 'next/router';
 
 const Results = () => {

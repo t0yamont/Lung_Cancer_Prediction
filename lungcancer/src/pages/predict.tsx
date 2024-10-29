@@ -1,5 +1,7 @@
+// src/ pages/ predict.tsx
+
 import Navbar from '../components/Navbar';
-import PredictForm from '../components/PredictionForm';
+import PredictForm from '../components/PredictForm';
 
 export default function PredictPage() {
   return (

@@ -1,3 +1,5 @@
+// src/ pages/ signup.tsx
+
 import Navbar from '../components/Navbar';
 import SignupForm from '../components/SignupForm';
 
