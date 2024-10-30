@@ -1,6 +1,5 @@
-# // src/ utils/ predict.py 
+# src/utils/predictor.py
 
-import sys
 import json
 import torch
 import torch.nn as nn
@@ -8,7 +7,7 @@ import torch.nn as nn
 class LungCancerRiskModel(nn.Module):
     def __init__(self):
         super(LungCancerRiskModel, self).__init__()
-        self.fc1 = nn.Linear(22, 64)
+        self.fc1 = nn.Linear(23, 64)
         self.dropout1 = nn.Dropout(0.3)
         self.fc2 = nn.Linear(64, 32)
         self.dropout2 = nn.Dropout(0.3)
@@ -22,13 +21,16 @@ class LungCancerRiskModel(nn.Module):
         x = self.fc3(x)
         return x
 
+# Load model
 model = LungCancerRiskModel()
 model.load_state_dict(torch.load(r'C:\Users\monti\OneDrive\Área de Trabalho\UNI\Lung_Cancer_Prediction\lungcancer\src\utils\model.pth'))
 model.eval()
 
-# Read JSON input
-inputs = json.loads(sys.argv[1])
-input_data = torch.tensor([inputs], dtype=torch.float32)
+# Read JSON input from file
+with open("input.json", "r") as f:
+    inputs = json.load(f)
+
+input_data = torch.tensor([list(inputs.values())], dtype=torch.float32)
 
 # Make prediction
 with torch.no_grad():
@@ -37,4 +39,3 @@ with torch.no_grad():
 
 risk_levels = {0: "Low", 1: "Medium", 2: "High"}
 print(risk_levels[prediction])
-

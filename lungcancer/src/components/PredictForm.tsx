@@ -1,4 +1,4 @@
-// src/ components/ PredictionForm.tsx
+// src/components/PredictionForm.tsx
 
 import { useState } from 'react';
 import axios from 'axios';
@@ -59,7 +59,20 @@ const PredictForm = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    if (name !== 'Age') {
+      const numericValue = parseInt(value, 10);
+      if (numericValue >= 0 && numericValue <= 8) {
+        setFormData({
+          ...formData,
+          [name]: value,
+        });
+      }
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,20 +90,36 @@ const PredictForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col max-w-md mx-auto mt-10">
-      {Object.keys(formData).map((key) => (
-        <label key={key}>
-          {key}:
+    <form onSubmit={handleSubmit} className="flex flex-col max-w-md mx-auto mt-10 space-y-6">
+      <h2 className="text-xl font-bold mb-4 text-center">Lung Cancer Risk Prediction</h2>
+      
+      <label className="flex flex-col mb-2">
+        Age:
+        <input
+          type="number"
+          name="Age"
+          value={formData.Age}
+          onChange={handleChange}
+          className="w-full p-2 mt-1 border border-gray-300 rounded"
+        />
+      </label>
+      
+      <h3 className="text-lg font-semibold mt-6 mb-4">Health Factors</h3>
+
+      {Object.keys(formData).filter((key) => key !== 'Age').map((key) => (
+        <label key={key} className="flex flex-col mb-2">
+          {key.replace(/([A-Z])/g, ' $1').trim()}:
           <input
             type="number"
             name={key}
-            value={formData[key as keyof FormData]} // Type assertion added
+            value={formData[key as keyof FormData]}
             onChange={handleChange}
-            className="p-2 mb-4 border border-gray-300 rounded"
+            className="w-full p-2 mt-1 border border-gray-300 rounded"
           />
         </label>
       ))}
-      <button type="submit" className="bg-blue-600 text-white p-2 rounded">Predict</button>
+
+      <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded mt-6">Predict</button>
     </form>
   );
 };

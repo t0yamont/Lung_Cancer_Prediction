@@ -10,6 +10,7 @@ const Navbar = () => {
         <Link href="/" legacyBehavior><a>Home</a></Link>
         <Link href="/login" legacyBehavior><a className="ml-4">Login</a></Link>
         <Link href="/signup" legacyBehavior><a className="ml-4">Signup</a></Link>
+        <Link href="/predict" legacyBehavior><a className="ml-4">Predict</a></Link>
       </div>
     </nav>
   );
