@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Lung Cancer Risk Prediction</h2>
+
+<form method="post" action="{{ url_for('predict') }}">
+    <label for="Age">Age:</label>
+    <input type="number" name="Age" required><br>
+
+    <label for="Gender">Gender:</label>
+    <select name="Gender" required>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+    </select><br>
+
+    {% for feature in features %}
+    <label for="{{ feature }}">{{ feature }} (1-8):</label>
+    <input type="number" name="{{ feature }}" min="1" max="8" required><br>
+    {% endfor %}
+
+    <input type="submit" value="Predict">
+</form>
+
+{% if prediction %}
+<h3>Your predicted risk level is: {{ prediction }}</h3>
+{% endif %}
+
+<a href="{{ url_for('logout') }}">Logout</a>
+{% endblock %}
