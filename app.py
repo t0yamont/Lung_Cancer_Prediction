@@ -4,7 +4,10 @@ from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+import joblib
 import logging
+import numpy as np
+import pandas as pd
 
 # Initialize the Flask application
 app = Flask(__name__)
@@ -34,21 +37,30 @@ class Prediction(db.Model):
     
     user = db.relationship('User', backref=db.backref('predictions', lazy=True))
 
-
-    # Define the neural network structure (must match the trained model)
+# Define the neural network structure (must match the trained model)
 class LungCancerModel(nn.Module):
     def __init__(self, input_size, num_classes):
         super(LungCancerModel, self).__init__()
-        self.layer1 = nn.Linear(input_size, 32)
-        self.layer2 = nn.Linear(32, 16)
+        self.layer1 = nn.Linear(input_size, 128)
+        self.layer2 = nn.Linear(128, 64)
+        self.layer3 = nn.Linear(64, 32)
+        self.layer4 = nn.Linear(32, 16)
         self.output_layer = nn.Linear(16, num_classes)
         self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.3)  # Reduced dropout rate
+        self.batch_norm1 = nn.BatchNorm1d(128)
+        self.batch_norm2 = nn.BatchNorm1d(64)
+        self.batch_norm3 = nn.BatchNorm1d(32)
+        self.batch_norm4 = nn.BatchNorm1d(16)
 
     def forward(self, x):
-        x = self.relu(self.layer1(x))
+        x = self.relu(self.batch_norm1(self.layer1(x)))
         x = self.dropout(x)
-        x = self.relu(self.layer2(x))
+        x = self.relu(self.batch_norm2(self.layer2(x)))
+        x = self.dropout(x)
+        x = self.relu(self.batch_norm3(self.layer3(x)))
+        x = self.dropout(x)
+        x = self.relu(self.batch_norm4(self.layer4(x)))
         x = self.dropout(x)
         x = self.output_layer(x)
         return x
@@ -57,8 +69,16 @@ class LungCancerModel(nn.Module):
 input_size = 23  # Number of features
 num_classes = 3  # 'Low', 'Medium', 'High'
 model = LungCancerModel(input_size, num_classes)
-model.load_state_dict(torch.load(r'C:\Users\monti\OneDrive\Área de Trabalho\UNI\lasttry\best_lung_cancer_model.pth'))
+model.load_state_dict(torch.load(r'C:\Users\monti\OneDrive\Área de Trabalho\UNI\Lung_Cancer_Prediction\LCmodel.pth',
+                                 weights_only=True))
 model.eval()
+
+# Load feature weights and scaler
+feature_weights = np.array([0.005717, 0.011563, 0.077415, 0.058212, 0.035528, 0.048781, 0.056778, 0.057988, 0.082982, 0.075362, 0.081950, 0.085614, 0.066343, 0.084637, 0.054082, 0.002754, 0.018799, 0.022499, 0.001727, 0.015656, 0.023023, 0.030673, 0.001915])
+scaler = joblib.load('scaler.pkl')  # Load the fitted scaler
+
+# Load the LabelEncoder
+le = joblib.load('label_encoder.pkl')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -150,23 +170,38 @@ def predict():
                     flash(f"Invalid input for {feature}. Please enter a value between 1 and 8.")
                     return render_template('predict.html', features=features_list)
 
+            logging.debug(f"Inputs before weighting: {inputs}")
+
+            # Apply feature weights
+            inputs = np.array(inputs)
+            inputs_weighted = inputs * feature_weights
+
+            logging.debug(f"Inputs after weighting: {inputs_weighted}")
+
+            # Feature scaling
+            inputs_scaled = scaler.transform([inputs_weighted])  # Use transform instead of fit_transform
+
+            logging.debug(f"Inputs after scaling: {inputs_scaled}")
+
             # Convert inputs to the format expected by the model
-            inputs_tensor = torch.tensor([inputs], dtype=torch.float32)
+            inputs_tensor = torch.tensor(inputs_scaled, dtype=torch.float32)
+
+            logging.debug(f"Inputs tensor: {inputs_tensor}")
 
             # Make the prediction
             with torch.no_grad():
                 output = model(inputs_tensor)
                 _, predicted = torch.max(output.data, 1)
-                level_mapping = {0: 'High', 1: 'Low', 2: 'Medium'}
-                predicted_level = level_mapping.get(predicted.item(), 'Unknown')
+                predicted_label = le.inverse_transform([predicted.item()])[0]
+
+            logging.debug(f"Predicted level: {predicted_label}")
 
             # Save prediction to database
-            prediction_record = Prediction(user_id=current_user.id, input_data=str(inputs), result=predicted_level)
+            prediction_record = Prediction(user_id=current_user.id, input_data=str(inputs), result=predicted_label)
             db.session.add(prediction_record)
             db.session.commit()
 
-            prediction = predicted_level
-
+            prediction = predicted_label
 
         except Exception as e:
             logging.error("Error in input: %s", e)
@@ -176,6 +211,7 @@ def predict():
     return render_template('predict.html', features=features_list, prediction=prediction)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     with app.app_context():
         db.create_all()
     app.run(debug=True)
